@@ -1,0 +1,31 @@
+name: Build iPhone prototype
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build unsigned device app
+        run: >-
+          xcodebuild -project GlassesMic.xcodeproj -scheme GlassesMic
+          -configuration Release -sdk iphoneos -destination 'generic/platform=iOS'
+          -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p package/Payload
+          cp -R build/Build/Products/Release-iphoneos/GlassesMic.app package/Payload/
+          cd package
+          ditto -c -k --keepParent Payload ../GlassesMic-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GlassesMic-unsigned
+          path: GlassesMic-unsigned.ipa
+          retention-days: 7
